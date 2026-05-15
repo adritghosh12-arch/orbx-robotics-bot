@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import styles from '../styles/Forum.module.css';
+import styles from '../../styles/Forum.module.css';
 
 export default function Forum() {
   const [threads, setThreads] = useState([]);
