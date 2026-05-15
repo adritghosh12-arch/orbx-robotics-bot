@@ -2,10 +2,5 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "env": [
-    "DATABASE_URL",
-    "GROQ_API_KEY",
-    "JWT_SECRET"
-  ]
+  "framework": "nextjs"
 }
