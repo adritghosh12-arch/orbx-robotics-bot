@@ -23,7 +23,6 @@
     "langchain-core": "^0.1.0",
     "@langchain/groq": "^0.0.1",
     "@langchain/community": "^0.0.1",
-    "faiss-node": "^0.2.0",
     "axios": "^1.6.0",
     "framer-motion": "^10.16.0",
     "react-icons": "^4.12.0",
