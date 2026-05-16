@@ -7,7 +7,24 @@ export default function Chat() {
     {
       id: 1,
       type: 'bot',
-      text: '👋 Welcome to Orbx AI! I\'m an FTC expert assistant. Ask me anything about FIRST Tech Challenge - rules, games, team eligibility, robot design, scouting, and more!',
+      text: `# Welcome to Orbx AI! 🤖
+
+Hello! I'm your **FTC expert assistant** here to help with everything about FIRST Tech Challenge.
+
+## What I Can Help With:
+• **Game Rules** - Current season (INTO THE DEEP) and game mechanics
+• **Robot Design** - Specifications, mechanisms, and build strategies
+• **Programming** - Java, Blocks, OnBot Java, and autonomous development
+• **Competition** - Tournament format, scoring, and alliance strategies
+• **Team Management** - Awards, engineering notebooks, and outreach
+
+## Popular Questions:
+• "What are the robot size requirements?"
+• "How does the INTO THE DEEP game work?"
+• "What programming languages can I use?"
+• "How do FTC competitions work?"
+
+*Ask me anything about FTC - I'm here to help your team succeed!* 🏆`,
       timestamp: new Date(),
     },
   ]);
@@ -15,6 +32,36 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState(null);
   const messagesEndRef = useRef(null);
+
+  // Format message text with basic markdown-like formatting
+  const formatMessage = (text) => {
+    return text
+      // Headers
+      .replace(/^# (.*$)/gim, '<h2 class="message-h2">$1</h2>')
+      .replace(/^## (.*$)/gim, '<h3 class="message-h3">$1</h3>')
+      .replace(/^### (.*$)/gim, '<h4 class="message-h4">$1</h4>')
+
+      // Bold text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+
+      // Bullet points
+      .replace(/^• (.*$)/gim, '<div class="bullet-point">• $1</div>')
+
+      // Numbered lists (basic)
+      .replace(/^(\d+)\. (.*$)/gim, '<div class="numbered-item"><strong>$1.</strong> $2</div>')
+
+      // Links
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+
+      // Italic text in asterisks
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+
+      // Code blocks (inline)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+
+      // Line breaks
+      .replace(/\n/g, '<br>');
+  };
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -122,10 +169,19 @@ export default function Chat() {
               transition={{ duration: 0.3 }}
             >
               <div className={styles.messageBubble}>
-                <p>{message.text}</p>
+                <div className={styles.messageContent}
+                     dangerouslySetInnerHTML={{
+                       __html: formatMessage(message.text)
+                     }}
+                />
                 {message.sources && message.sources.length > 0 && (
                   <small className={styles.sources}>
                     Sources: {message.sources.join(', ')}
+                  </small>
+                )}
+                {message.debug && message.debug.modelUsed && (
+                  <small className={styles.debug}>
+                    Model: {message.debug.modelUsed}
                   </small>
                 )}
               </div>
