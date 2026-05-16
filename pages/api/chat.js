@@ -1,4 +1,4 @@
-import { getRagChain } from '../../lib/rag-chain.js';
+import { callGroqDirectly } from '../../lib/groq-direct.js';
 import { query } from '../../lib/db.js';
 import { extractToken, verifyToken } from '../../lib/auth.js';
 
@@ -14,8 +14,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('Chat API called with question:', question);
-    console.log('Environment check - GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
+    console.log('=== BULLETPROOF CHAT API ===');
+    console.log('Question received:', question);
+    console.log('GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
 
     // Get user from token if available
     let userId = null;
@@ -27,45 +28,60 @@ export default async function handler(req, res) {
       }
     }
 
-    console.log('Initializing RAG chain...');
-    // Initialize RAG chain
-    const ragChain = await getRagChain();
-
-    console.log('Calling RAG chain invoke...');
-    // Get answer from RAG
-    const result = await ragChain.invoke(question);
-    console.log('RAG result:', result);
+    console.log('Calling direct Groq API...');
+    // Use direct API call - NO LANGCHAIN
+    const result = await callGroqDirectly(question);
+    console.log('Direct API result:', result);
     
-    // Save to chat history if user is logged in
-    if (userId) {
+    // Always try to save to chat history (but don't fail if DB is down)
+    if (userId && result.success) {
       try {
         await query(
           `INSERT INTO chat_history (user_id, question, answer, confidence, created_at)
            VALUES ($1, $2, $3, $4, NOW())`,
           [userId, question, result.answer, result.confidence || 0.8]
         );
+        console.log('Chat history saved successfully');
       } catch (dbError) {
-        console.error('Error saving chat history:', dbError);
+        console.error('Error saving chat history (non-fatal):', dbError);
         // Don't fail the request if history save fails
       }
     }
 
+    // ALWAYS return a successful response structure
     return res.status(200).json({
+      success: result.success,
       answer: result.answer,
-      confidence: result.confidence,
-      sources: result.sources || [],
+      confidence: result.confidence || 0.8,
+      sources: result.sources || ['Direct API'],
       savedToHistory: !!userId,
+      debug: result.debug || {},
+      error: result.success ? undefined : result.error
     });
   } catch (error) {
-    console.error('Chat API error details:', error);
-    console.error('Error stack:', error.stack);
+    console.error('=== FATAL CHAT API ERROR ===');
+    console.error('Error type:', error.name);
     console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      hasGroqKey: !!process.env.GROQ_API_KEY,
+      timestamp: new Date().toISOString()
+    });
 
-    return res.status(500).json({
-      error: 'Failed to process your question',
-      answer: 'I encountered an error. Please try again or visit firstinspires.org for more information.',
+    // NEVER return 500 - always return 200 with error details
+    return res.status(200).json({
+      success: false,
+      answer: `System error: ${error.message}. This has been logged for debugging.`,
       confidence: 0,
-      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+      sources: ['Error Handler'],
+      error: error.message,
+      errorType: error.name,
+      debug: {
+        timestamp: new Date().toISOString(),
+        hasApiKey: !!process.env.GROQ_API_KEY,
+        nodeEnv: process.env.NODE_ENV
+      }
     });
   }
 }
