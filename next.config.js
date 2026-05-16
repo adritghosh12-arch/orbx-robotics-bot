@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Vercel deployment fix - updated 2026-05-15
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
