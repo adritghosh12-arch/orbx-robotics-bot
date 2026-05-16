@@ -1,8 +1,8 @@
-import pool from './lib/db.js';
+import { getClient } from '../lib/db.js';
 import 'dotenv/config';
 
 const setupDatabase = async () => {
-  const client = await pool.connect();
+  const client = await getClient();
   try {
     console.log('Setting up database...');
 
@@ -78,7 +78,6 @@ const setupDatabase = async () => {
     console.error('❌ Database setup failed:', error);
   } finally {
     client.release();
-    await pool.end();
   }
 };
 
