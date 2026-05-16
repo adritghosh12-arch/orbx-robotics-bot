@@ -14,6 +14,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Chat API called with question:', question);
+    console.log('Environment check - GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
+
     // Get user from token if available
     let userId = null;
     const token = extractToken(req);
@@ -24,11 +27,14 @@ export default async function handler(req, res) {
       }
     }
 
+    console.log('Initializing RAG chain...');
     // Initialize RAG chain
     const ragChain = await getRagChain();
-    
+
+    console.log('Calling RAG chain invoke...');
     // Get answer from RAG
     const result = await ragChain.invoke(question);
+    console.log('RAG result:', result);
     
     // Save to chat history if user is logged in
     if (userId) {
@@ -51,12 +57,15 @@ export default async function handler(req, res) {
       savedToHistory: !!userId,
     });
   } catch (error) {
-    console.error('Chat API error:', error);
-    
+    console.error('Chat API error details:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
+
     return res.status(500).json({
       error: 'Failed to process your question',
       answer: 'I encountered an error. Please try again or visit firstinspires.org for more information.',
       confidence: 0,
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }
