@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useSession, signOut } from 'next-auth/react';
 import styles from '../styles/Chat.module.css';
 
 export default function Chat() {
@@ -32,6 +33,7 @@ Hello! I'm your **FTC expert assistant** here to help with everything about FIRS
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState(null);
   const messagesEndRef = useRef(null);
+  const { data: session } = useSession();
 
   // Format message text with basic markdown-like formatting
   const formatMessage = (text) => {
@@ -72,26 +74,12 @@ Hello! I'm your **FTC expert assistant** here to help with everything about FIRS
     scrollToBottom();
   }, [messages]);
 
-  // Load user session
+  // Load user from NextAuth session
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const res = await fetch('/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const userData = await res.json();
-            setUser(userData);
-          }
-        } catch (error) {
-          console.error('Auth check failed:', error);
-        }
-      }
-    };
-    checkAuth();
-  }, []);
+    if (session?.user) {
+      setUser(session.user);
+    }
+  }, [session]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -113,7 +101,6 @@ Hello! I'm your **FTC expert assistant** here to help with everything about FIRS
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(user && { Authorization: `Bearer ${localStorage.getItem('token')}` }),
         },
         body: JSON.stringify({ question: input, userId: user?.id }),
       });
@@ -150,7 +137,22 @@ Hello! I'm your **FTC expert assistant** here to help with everything about FIRS
       <div className={styles.header}>
         <h1>🤖 Orbx AI Chat</h1>
         <p>Ask me anything about FTC!</p>
-        {user && <p className={styles.userInfo}>Logged in as: {user.email}</p>}
+        {user && (
+          <div className={styles.userSection}>
+            <p className={styles.userInfo}>
+              {user.image && <img src={user.image} alt="" className={styles.avatar} />}
+              {user.name || user.email}
+            </p>
+            <button className={styles.signOutButton} onClick={() => signOut()}>
+              Sign Out
+            </button>
+          </div>
+        )}
+        {!user && (
+          <a href="/auth/signin" className={styles.signInLink}>
+            Sign in for chat history
+          </a>
+        )}
       </div>
 
       {/* Messages */}
@@ -185,7 +187,7 @@ Hello! I'm your **FTC expert assistant** here to help with everything about FIRS
                   </small>
                 )}
               </div>
-              <small className={styles.timestamp}>
+              <small className={styles.timestamp} suppressHydrationWarning>
                 {message.timestamp.toLocaleTimeString()}
               </small>
             </motion.div>

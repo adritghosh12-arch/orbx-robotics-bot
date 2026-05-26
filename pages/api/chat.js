@@ -18,13 +18,17 @@ export default async function handler(req, res) {
     console.log('Question received:', question);
     console.log('GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
 
-    // Get user from token if available
+    // Get user from JWT token (simplified for now)
     let userId = null;
+    let userInfo = null;
+
     const token = extractToken(req);
     if (token) {
       const decoded = verifyToken(token);
       if (decoded) {
         userId = decoded.userId;
+        userInfo = { provider: 'jwt' };
+        console.log('User authenticated via JWT token:', { userId });
       }
     }
 
@@ -33,17 +37,31 @@ export default async function handler(req, res) {
     const result = await callGroqDirectly(question);
     console.log('Direct API result:', result);
     
-    // Always try to save to chat history (but don't fail if DB is down)
+    // Always try to save to chat history with enhanced metadata
+    let historyStatus = 'not_saved';
     if (userId && result.success) {
       try {
         await query(
-          `INSERT INTO chat_history (user_id, question, answer, confidence, created_at)
-           VALUES ($1, $2, $3, $4, NOW())`,
-          [userId, question, result.answer, result.confidence || 0.8]
+          `INSERT INTO chat_history (user_id, question, answer, confidence, timestamp, metadata)
+           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)`,
+          [
+            userId,
+            question,
+            result.answer,
+            result.confidence || 0.8,
+            JSON.stringify({
+              provider: userInfo?.provider,
+              model: result.debug?.modelUsed,
+              response_time: result.debug?.responseTime,
+              session_type: userInfo?.provider === 'jwt_legacy' ? 'jwt' : 'oauth'
+            })
+          ]
         );
-        console.log('Chat history saved successfully');
+        historyStatus = 'saved';
+        console.log('Chat history saved successfully with enhanced metadata');
       } catch (dbError) {
         console.error('Error saving chat history (non-fatal):', dbError);
+        historyStatus = 'failed';
         // Don't fail the request if history save fails
       }
     }
@@ -54,7 +72,9 @@ export default async function handler(req, res) {
       answer: result.answer,
       confidence: result.confidence || 0.8,
       sources: result.sources || ['Direct API'],
-      savedToHistory: !!userId,
+      savedToHistory: historyStatus,
+      userId: userId,
+      authType: userInfo?.provider || 'anonymous',
       debug: result.debug || {},
       error: result.success ? undefined : result.error
     });

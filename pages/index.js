@@ -26,6 +26,7 @@ export default function Home() {
           <div className={styles.navLinks}>
             <Link href="/about">About</Link>
             <Link href="/chat">Chat</Link>
+            <Link href="/cad">CAD</Link>
             <Link href="/forum">Forum</Link>
             <Link href="/dashboard">Dashboard</Link>
           </div>
